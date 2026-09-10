@@ -1,4 +1,4 @@
-const VERSION = "2026-09-10-cors-final";
+const VERSION = "2026-09-10-jsonp-fallback";
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Accept";
 
@@ -33,6 +33,23 @@ function json(data, status, origin, allowedOrigin) {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
       ...corsHeaders(origin, allowedOrigin),
+    },
+  });
+}
+
+function jsonp(data, status, callback) {
+  const safeCallback = /^[A-Za-z_$][0-9A-Za-z_$]*(?:\.[A-Za-z_$][0-9A-Za-z_$]*){0,4}$/.test(callback || "")
+    ? callback
+    : null;
+  if (!safeCallback) return json({ error: "Invalid callback." }, 400, "", "*");
+  const body = `${safeCallback}(${JSON.stringify(data)});`;
+  return new Response(body, {
+    status,
+    headers: {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "X-Content-Type-Options": "nosniff",
+      "X-Mouth-Mover-Version": VERSION,
     },
   });
 }
@@ -124,22 +141,26 @@ export default {
     if (request.method === "GET") {
       const url = new URL(request.url);
       const payload = url.searchParams.get("payload");
+      const callback = url.searchParams.get("callback");
       if (!payload) {
-        return json({
+        const data = {
           ok: true,
           service: "mouth-mover-ai",
           version: VERSION,
           openaiConfigured: Boolean(env.OPENAI_API_KEY),
           model: env.OPENAI_MODEL || "gpt-5.6-luna",
-        }, 200, origin, allowedOrigin);
+        };
+        return callback ? jsonp(data, 200, callback) : json(data, 200, origin, allowedOrigin);
       }
       try {
         const body = decodePayload(payload);
         const result = await makeReply(body, env);
-        return json(result.reply ? { reply: result.reply } : { error: result.error }, result.status, origin, allowedOrigin);
+        const data = result.reply ? { reply: result.reply } : { error: result.error };
+        return callback ? jsonp(data, result.status, callback) : json(data, result.status, origin, allowedOrigin);
       } catch (error) {
         console.error("GET chat payload error", error);
-        return json({ error: "Invalid chat payload." }, 400, origin, allowedOrigin);
+        const data = { error: "Invalid chat payload." };
+        return callback ? jsonp(data, 400, callback) : json(data, 400, origin, allowedOrigin);
       }
     }
 
