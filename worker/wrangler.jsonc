@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
-  "name": "mouth-mover-ai",
+  "name": "mouth-mover",
   "main": "index.js",
   "compatibility_date": "2026-09-10",
   "workers_dev": true,
