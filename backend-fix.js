@@ -1,17 +1,29 @@
 // Mouth Mover network fix.
-// Force the Cloudflare Worker request to be a CORS-simple POST so the browser
-// does not need an OPTIONS preflight, and add a clear diagnostic if the Worker
-// itself cannot be reached.
+// Cloudflare Worker chat calls use a CORS-simple POST so the browser does not
+// need a preflight. The URL comparison is normalized so a trailing slash or
+// equivalent URL cannot bypass the fix.
 (() => {
   const BACKEND = 'https://mouth-mover-ai.stedford30.workers.dev';
+  const BACKEND_URL = new URL(BACKEND);
   const originalFetch = window.fetch.bind(window);
 
   window.fetch = async (input, init = {}) => {
-    const url = typeof input === 'string' ? input : input?.url;
+    let requestUrl = '';
+    try {
+      requestUrl = typeof input === 'string' ? input : input?.url || '';
+    } catch {}
 
-    if (url === BACKEND && String(init?.method || 'GET').toUpperCase() === 'POST') {
+    let isBackend = false;
+    try {
+      const u = new URL(requestUrl, window.location.href);
+      isBackend = u.origin === BACKEND_URL.origin && u.pathname.replace(/\/+$/, '') === BACKEND_URL.pathname.replace(/\/+$/, '');
+    } catch {}
+
+    if (isBackend && String(init?.method || 'GET').toUpperCase() === 'POST') {
       const next = { ...init };
       const headers = new Headers(init.headers || {});
+      // text/plain is a CORS-safelisted content type. The body is still JSON,
+      // and Cloudflare Workers can parse it with request.json().
       headers.set('Content-Type', 'text/plain;charset=UTF-8');
       headers.delete('Accept');
       next.headers = headers;
@@ -19,16 +31,13 @@
       next.cache = 'no-store';
       next.credentials = 'omit';
 
+      // Always send the canonical Worker URL.
+      const body = next.body;
       try {
-        const response = await originalFetch(input, next);
-        return response;
+        return await originalFetch(BACKEND, { ...next, body });
       } catch (error) {
-        const diagnostic = new Error(
-          'Mouth Mover could not connect to the Cloudflare AI Worker. ' +
-          'The Worker URL is reachable in a browser, but the chat request was blocked or unreachable.'
-        );
-        diagnostic.cause = error;
-        throw diagnostic;
+        console.warn('Mouth Mover Cloudflare Worker fetch failed:', error);
+        throw error;
       }
     }
 
