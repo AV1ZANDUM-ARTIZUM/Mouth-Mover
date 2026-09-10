@@ -1,4 +1,4 @@
-const VERSION = "2026-09-10-get-chat-fallback";
+const VERSION = "2026-09-10-diagnostics-1";
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Accept";
 
@@ -61,15 +61,6 @@ function decodePayload(value) {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-function encodeSafePayload(value) {
-  const bytes = new TextEncoder().encode(JSON.stringify(value));
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
 async function makeReply(body, env) {
   const character = body?.character || {};
   const messages = Array.isArray(body?.messages) ? body.messages : [];
@@ -104,19 +95,24 @@ async function makeReply(body, env) {
 
   if (!response.ok) {
     const detail = await response.text();
-    let message = "The AI service returned an error.";
+    let message = `OpenAI returned HTTP ${response.status}.`;
     try {
       const parsed = JSON.parse(detail);
       message = parsed?.error?.message || message;
     } catch {}
-    console.error("OpenAI API error", response.status, detail.slice(0, 1000));
+    console.error("OpenAI API error", response.status, detail.slice(0, 2000));
     return { error: message, status: 502 };
   }
 
-  const data = await response.json();
-  const reply = typeof data.output_text === "string" ? data.output_text.trim() : "";
-  if (!reply) return { error: "The AI service returned no text.", status: 502 };
-  return { reply, status: 200 };
+  try {
+    const data = await response.json();
+    const reply = typeof data.output_text === "string" ? data.output_text.trim() : "";
+    if (!reply) return { error: "The AI service returned no text.", status: 502 };
+    return { reply, status: 200 };
+  } catch (error) {
+    console.error("OpenAI response parsing error", error);
+    return { error: "The AI service returned an invalid response.", status: 502 };
+  }
 }
 
 export default {
@@ -134,7 +130,15 @@ export default {
     if (request.method === "GET") {
       const url = new URL(request.url);
       const payload = url.searchParams.get("payload");
-      if (!payload) return json({ ok: true, service: "mouth-mover-ai", version: VERSION }, 200, origin, allowedOrigin);
+      if (!payload) {
+        return json({
+          ok: true,
+          service: "mouth-mover-ai",
+          version: VERSION,
+          openaiConfigured: Boolean(env.OPENAI_API_KEY),
+          model: env.OPENAI_MODEL || "gpt-5.6-luna",
+        }, 200, origin, allowedOrigin);
+      }
       if (!isAllowedOrigin(origin, allowedOrigin)) return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
       try {
         const body = decodePayload(payload);
