@@ -47,6 +47,11 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(origin, allowedOrigin) });
     }
 
+    // Simple browser health check so the Worker can be tested directly.
+    if (request.method === "GET") {
+      return json({ ok: true, service: "mouth-mover-ai" }, 200, origin, allowedOrigin);
+    }
+
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, origin, allowedOrigin);
     }
@@ -78,19 +83,25 @@ export default {
     }
 
     const model = env.OPENAI_MODEL || "gpt-5.6-luna";
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        instructions: characterInstructions(character),
-        input: safeMessages,
-        store: false,
-      }),
-    });
+    let response;
+    try {
+      response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          instructions: characterInstructions(character),
+          input: safeMessages,
+          store: false,
+        }),
+      });
+    } catch (error) {
+      console.error("OpenAI network error", error);
+      return json({ error: "The AI service could not be reached." }, 502, origin, allowedOrigin);
+    }
 
     if (!response.ok) {
       const detail = await response.text();
