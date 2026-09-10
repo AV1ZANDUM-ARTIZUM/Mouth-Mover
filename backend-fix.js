@@ -1,6 +1,6 @@
 // Mouth Mover network fix.
-// Prefer the normal POST request, but if the browser blocks or cannot establish
-// the cross-origin POST, retry through the Worker's CORS-simple GET chat endpoint.
+// Prefer the normal POST request. If it is blocked OR returns an HTTP error,
+// retry through the Worker's CORS-simple GET chat endpoint.
 (() => {
   const BACKEND = 'https://mouth-mover-ai.stedford30.workers.dev';
   const BACKEND_URL = new URL(BACKEND);
@@ -71,15 +71,20 @@
 
       try {
         const response = await originalFetch(BACKEND, { ...next, body });
-        return response;
+        if (response.ok) return response;
+        console.warn(`Mouth Mover POST returned HTTP ${response.status}; trying GET fallback.`);
       } catch (error) {
         console.warn('Mouth Mover POST failed; trying CORS-simple GET fallback.', error);
-        try {
-          return await getFallback(body);
-        } catch (fallbackError) {
-          console.warn('Mouth Mover GET fallback failed.', fallbackError);
-          throw error;
-        }
+      }
+
+      try {
+        const fallback = await getFallback(body);
+        if (fallback.ok) return fallback;
+        console.warn(`Mouth Mover GET fallback returned HTTP ${fallback.status}.`);
+        return fallback;
+      } catch (fallbackError) {
+        console.warn('Mouth Mover GET fallback failed.', fallbackError);
+        throw new Error('Mouth Mover could not reach the AI Worker.');
       }
     }
 
