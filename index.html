@@ -43,6 +43,22 @@
       <section id="settings-view" class="view"><div class="page-heading"><button class="back-btn" data-view="discover">←</button><div><p class="eyebrow">SETTINGS</p><h2>AI connection</h2></div></div><div class="settings-card"><label>Backend URL<input id="api-url" type="url" placeholder="https://your-backend.example.com/api/chat"></label><p class="hint">For real AI replies, point this at your own secure backend. Never put a private API key in this GitHub Pages site.</p><label class="toggle"><input id="demo-mode" type="checkbox"><span>Use demo AI when the backend is unavailable</span></label><button class="primary" data-action="save-settings">Save settings</button><div class="api-info"><strong>Expected request</strong><code>POST /api/chat → { character, messages }</code><strong>Expected response</strong><code>{ "reply": "..." }</code></div></div></section>
     </main>
   </div>
+  <script>
+  // Force Mouth Mover to use the Cloudflare Worker instead of an old saved backend URL.
+  (()=>{
+    const KEY='mouth-mover-v1';
+    const CLOUDFLARE_BACKEND='https://mouth-mover-ai.stedford30.workers.dev';
+    try{
+      const raw=localStorage.getItem(KEY);
+      if(raw){
+        const state=JSON.parse(raw);
+        state.settings=state.settings||{};
+        state.settings.apiUrl=CLOUDFLARE_BACKEND;
+        localStorage.setItem(KEY,JSON.stringify(state));
+      }
+    }catch(e){console.warn('Backend URL reset failed',e)}
+  })();
+  </script>
   <script src="app.js"></script>
   <script src="magic-characters.js"></script>
   <script src="flirty-character.js"></script>
