@@ -7,16 +7,16 @@ function isAllowedOrigin(origin, allowedOrigin) {
   try {
     const url = new URL(origin);
     const allowed = new URL(allowedOrigin);
-    // GitHub Pages can use the same hostname with different paths/environments.
-    if (url.protocol === "https:" && url.hostname === allowed.hostname) return true;
-  } catch {}
-  return false;
+    return url.protocol === "https:" && url.hostname === allowed.hostname;
+  } catch {
+    return false;
+  }
 }
 
 function corsHeaders(origin, allowedOrigin) {
-  const allowOrigin = isAllowedOrigin(origin, allowedOrigin) ? (origin || allowedOrigin) : allowedOrigin;
+  const allowed = isAllowedOrigin(origin, allowedOrigin);
   return {
-    "Access-Control-Allow-Origin": allowOrigin || "*",
+    "Access-Control-Allow-Origin": allowed ? (origin || allowedOrigin || "*") : (allowedOrigin || "*"),
     "Access-Control-Allow-Methods": ALLOWED_METHODS,
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
@@ -39,7 +39,6 @@ function characterInstructions(character) {
   const personality = String(character?.personality || "friendly and conversational").slice(0, 1500);
   const backstory = String(character?.backstory || "").slice(0, 2500);
   const style = String(character?.style || "natural and conversational").slice(0, 800);
-
   return [
     `You are ${name}, an AI character in Mouth Mover.`,
     `Personality: ${personality}`,
@@ -58,7 +57,7 @@ export default {
 
     if (request.method === "OPTIONS") {
       if (!isAllowedOrigin(origin, allowedOrigin)) {
-        return json({ error: "Origin not allowed", origin }, 403, origin, allowedOrigin);
+        return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
       }
       return new Response(null, { status: 204, headers: corsHeaders(origin, allowedOrigin) });
     }
@@ -72,7 +71,7 @@ export default {
     }
 
     if (!isAllowedOrigin(origin, allowedOrigin)) {
-      return json({ error: "Origin not allowed", origin }, 403, origin, allowedOrigin);
+      return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
     }
 
     if (!env.OPENAI_API_KEY) {
@@ -120,13 +119,17 @@ export default {
 
     if (!response.ok) {
       const detail = await response.text();
+      let message = "The AI service returned an error.";
+      try {
+        const parsed = JSON.parse(detail);
+        message = parsed?.error?.message || message;
+      } catch {}
       console.error("OpenAI API error", response.status, detail.slice(0, 1000));
-      return json({ error: "The AI service returned an error.", status: response.status }, 502, origin, allowedOrigin);
+      return json({ error: message, status: response.status }, 502, origin, allowedOrigin);
     }
 
     const data = await response.json();
     const reply = typeof data.output_text === "string" ? data.output_text.trim() : "";
-
     if (!reply) {
       return json({ error: "The AI service returned no text." }, 502, origin, allowedOrigin);
     }
