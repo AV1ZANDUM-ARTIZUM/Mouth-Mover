@@ -1,0 +1,12 @@
+{
+  "name": "mouth-mover-ai-characters",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mouth Mover AI character chat backend",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "openai": "^6.0.0"
+  }
+}
