@@ -36,6 +36,8 @@ Never commit `.env`, `.dev.vars`, or an API key. Never put an API key in `app.js
 
 The repository root contains `index.html`, `styles.css`, and `app.js`, so it is ready to publish as a static Pages site. Set GitHub Pages to **Deploy from a branch → main → /(root)**. GitHub documents branch/folder publishing for existing repositories. citeturn0search5
 
+A fresh commit is included after Pages configuration so GitHub has a new publishing-source push to process.
+
 ## Project files
 
 - `index.html` — app layout
