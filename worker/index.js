@@ -1,4 +1,6 @@
-const ALLOWED_METHODS = "POST, OPTIONS";
+const VERSION = "2026-09-10-cors-fix";
+const ALLOWED_METHODS = "GET, POST, OPTIONS";
+const ALLOWED_HEADERS = "Content-Type, Accept";
 
 function isAllowedOrigin(origin, allowedOrigin) {
   if (!origin) return true;
@@ -18,9 +20,10 @@ function corsHeaders(origin, allowedOrigin) {
   return {
     "Access-Control-Allow-Origin": allowed ? (origin || allowedOrigin || "*") : (allowedOrigin || "*"),
     "Access-Control-Allow-Methods": ALLOWED_METHODS,
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": ALLOWED_HEADERS,
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
+    "X-Mouth-Mover-Version": VERSION,
   };
 }
 
@@ -63,7 +66,7 @@ export default {
     }
 
     if (request.method === "GET") {
-      return json({ ok: true, service: "mouth-mover-ai" }, 200, origin, allowedOrigin);
+      return json({ ok: true, service: "mouth-mover-ai", version: VERSION }, 200, origin, allowedOrigin);
     }
 
     if (request.method !== "POST") {
