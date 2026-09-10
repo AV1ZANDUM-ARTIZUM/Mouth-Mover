@@ -6,6 +6,6 @@
   "workers_dev": true,
   "vars": {
     "OPENAI_MODEL": "gpt-5.6-luna",
-    "ALLOWED_ORIGIN": "https://av1zandum-artizum.github.io"
+    "ALLOWED_ORIGIN": "*"
   }
 }
