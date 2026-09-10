@@ -36,12 +36,12 @@
   <script>
   (()=>{const KEY='mouth-mover-v1';const CLOUDFLARE_BACKEND='https://mouth-mover-ai.stedford30.workers.dev';try{const raw=localStorage.getItem(KEY);if(raw){const state=JSON.parse(raw);state.settings=state.settings||{};state.settings.apiUrl=CLOUDFLARE_BACKEND;localStorage.setItem(KEY,JSON.stringify(state));}}catch(e){console.warn('Backend URL reset failed',e)}})();
   </script>
-  <script src="app.js"></script>
-  <script src="backend-fix.js"></script>
+  <script src="app.js?v=20260910-2"></script>
+  <script src="backend-fix.js?v=20260910-2"></script>
   <script src="magic-characters.js"></script>
   <script src="flirty-character.js"></script>
   <script>
-  (()=>{const icons={Magic:'🔮',Fantasy:'🧙',Adventure:'🗺️',Anime:'⚡',Gaming:'🎮',Study:'📚',Science:'🧪',Comedy:'🤪',Chill:'🌙',Sports:'🏆',Mystery:'🕵️',Technology:'🤖',Knowledge:'🧠',Nature:'🌿',Creative:'🎨',Racing:'🏎️',Wellness:'🧘',Space:'🚀',Coding:'💻',Spooky:'👻',Cozy:'☕',Music:'🎵',Building:'🔨',Holiday:'🎁',Dance:'💃',Art:'🖌️',Heroes:'🛡️',Cute:'🌸',Wholesome:'🍀',Strategy:'♟️',Original:'✨',Flirty:'💋'};function decorate(){document.querySelectorAll('.avatar-fallback').forEach(el=>{if(el.dataset.aiIconReady)return;const host=el.closest('.character-card,.chat-character');if(!host)return;const category=host.querySelector('.tag')?.textContent?.trim()||'Original';el.dataset.aiIconReady='1';const p=el.closest('.portrait');el.innerHTML=`<span class="ai-icon-symbol">${icons[category]||icons.Original}</span><span class="ai-icon-sparkle">✦</span>`;if(p){p.dataset.aiCategory=category;p.classList.add('ai-icon-portrait')}})}new MutationObserver(decorate).observe(document.documentElement,{childList:true,subtree:true});decorate()})();
+  (()=>{const icons={Magic:'🔮',Fantasy:'🧙',Adventure:'🗺️',Anime:'⚡',Gaming:'🎮',Study:'📚',Science:'🧪',Comedy:'🤪',Chill:'🌙',Sports:'🏆',Mystery:'🕵️',Technology:'🤖',Knowledge:'🧠',Nature:'🌿',Creative:'🎨',Racing:'🏎️',Coding:'💻',Spooky:'👻',Cozy:'☕',Music:'🎵',Building:'🔨',Holiday:'🎁',Dance:'💃',Art:'🖌️',Heroes:'🛡️',Cute:'🌸',Wholesome:'🍀',Strategy:'♟️',Original:'✨',Flirty:'💋'};function decorate(){document.querySelectorAll('.avatar-fallback').forEach(el=>{if(el.dataset.aiIconReady)return;const host=el.closest('.character-card,.chat-character');if(!host)return;const category=host.querySelector('.tag')?.textContent?.trim()||'Original';el.dataset.aiIconReady='1';const p=el.closest('.portrait');el.innerHTML=`<span class="ai-icon-symbol">${icons[category]||icons.Original}</span><span class="ai-icon-sparkle">✦</span>`;if(p){p.dataset.aiCategory=category;p.classList.add('ai-icon-portrait')}})}new MutationObserver(decorate).observe(document.documentElement,{childList:true,subtree:true});decorate()})();
   </script>
 </body>
 </html>
