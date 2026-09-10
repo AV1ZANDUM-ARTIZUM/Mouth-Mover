@@ -1,4 +1,4 @@
-const VERSION = "2026-09-10-cors-fix";
+const VERSION = "2026-09-10-get-chat-fallback";
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Accept";
 
@@ -53,6 +53,72 @@ function characterInstructions(character) {
   ].join("\n");
 }
 
+function decodePayload(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function encodeSafePayload(value) {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function makeReply(body, env) {
+  const character = body?.character || {};
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
+  const safeMessages = messages
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-18)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+
+  if (!safeMessages.length) return { error: "At least one message is required.", status: 400 };
+  if (!env.OPENAI_API_KEY) return { error: "OPENAI_API_KEY is not configured on the server.", status: 500 };
+
+  const model = env.OPENAI_MODEL || "gpt-5.6-luna";
+  let response;
+  try {
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        instructions: characterInstructions(character),
+        input: safeMessages,
+        store: false,
+      }),
+    });
+  } catch (error) {
+    console.error("OpenAI network error", error);
+    return { error: "The AI service could not be reached.", status: 502 };
+  }
+
+  if (!response.ok) {
+    const detail = await response.text();
+    let message = "The AI service returned an error.";
+    try {
+      const parsed = JSON.parse(detail);
+      message = parsed?.error?.message || message;
+    } catch {}
+    console.error("OpenAI API error", response.status, detail.slice(0, 1000));
+    return { error: message, status: 502 };
+  }
+
+  const data = await response.json();
+  const reply = typeof data.output_text === "string" ? data.output_text.trim() : "";
+  if (!reply) return { error: "The AI service returned no text.", status: 502 };
+  return { reply, status: 200 };
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -66,20 +132,22 @@ export default {
     }
 
     if (request.method === "GET") {
-      return json({ ok: true, service: "mouth-mover-ai", version: VERSION }, 200, origin, allowedOrigin);
+      const url = new URL(request.url);
+      const payload = url.searchParams.get("payload");
+      if (!payload) return json({ ok: true, service: "mouth-mover-ai", version: VERSION }, 200, origin, allowedOrigin);
+      if (!isAllowedOrigin(origin, allowedOrigin)) return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
+      try {
+        const body = decodePayload(payload);
+        const result = await makeReply(body, env);
+        return json(result.reply ? { reply: result.reply } : { error: result.error }, result.status, origin, allowedOrigin);
+      } catch (error) {
+        console.error("GET chat payload error", error);
+        return json({ error: "Invalid chat payload." }, 400, origin, allowedOrigin);
+      }
     }
 
-    if (request.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405, origin, allowedOrigin);
-    }
-
-    if (!isAllowedOrigin(origin, allowedOrigin)) {
-      return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
-    }
-
-    if (!env.OPENAI_API_KEY) {
-      return json({ error: "OPENAI_API_KEY is not configured on the server." }, 500, origin, allowedOrigin);
-    }
+    if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, origin, allowedOrigin);
+    if (!isAllowedOrigin(origin, allowedOrigin)) return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
 
     let body;
     try {
@@ -88,55 +156,7 @@ export default {
       return json({ error: "Invalid JSON body" }, 400, origin, allowedOrigin);
     }
 
-    const character = body?.character || {};
-    const messages = Array.isArray(body?.messages) ? body.messages : [];
-    const safeMessages = messages
-      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-      .slice(-18)
-      .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
-
-    if (!safeMessages.length) {
-      return json({ error: "At least one message is required." }, 400, origin, allowedOrigin);
-    }
-
-    const model = env.OPENAI_MODEL || "gpt-5.6-luna";
-    let response;
-    try {
-      response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model,
-          instructions: characterInstructions(character),
-          input: safeMessages,
-          store: false,
-        }),
-      });
-    } catch (error) {
-      console.error("OpenAI network error", error);
-      return json({ error: "The AI service could not be reached." }, 502, origin, allowedOrigin);
-    }
-
-    if (!response.ok) {
-      const detail = await response.text();
-      let message = "The AI service returned an error.";
-      try {
-        const parsed = JSON.parse(detail);
-        message = parsed?.error?.message || message;
-      } catch {}
-      console.error("OpenAI API error", response.status, detail.slice(0, 1000));
-      return json({ error: message, status: response.status }, 502, origin, allowedOrigin);
-    }
-
-    const data = await response.json();
-    const reply = typeof data.output_text === "string" ? data.output_text.trim() : "";
-    if (!reply) {
-      return json({ error: "The AI service returned no text." }, 502, origin, allowedOrigin);
-    }
-
-    return json({ reply }, 200, origin, allowedOrigin);
+    const result = await makeReply(body, env);
+    return json(result.reply ? { reply: result.reply } : { error: result.error }, result.status, origin, allowedOrigin);
   },
 };
