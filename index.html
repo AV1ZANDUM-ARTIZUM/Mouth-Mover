@@ -45,9 +45,10 @@
   </div>
   <script src="app.js"></script>
   <script src="magic-characters.js"></script>
+  <script src="flirty-character.js"></script>
   <script>
   (()=>{
-    const icons={Magic:'🔮',Fantasy:'🧙',Adventure:'🗺️',Anime:'⚡',Gaming:'🎮',Study:'📚',Science:'🧪',Comedy:'🤪',Chill:'🌙',Sports:'🏆',Mystery:'🕵️',Technology:'🤖',Knowledge:'🧠',Nature:'🌿',Creative:'🎨',Racing:'🏎️',Wellness:'🧘',Space:'🚀',Coding:'💻',Spooky:'👻',Cozy:'☕',Music:'🎵',Building:'🔨',Holiday:'🎁',Dance:'💃',Art:'🖌️',Heroes:'🛡️',Cute:'🌸',Wholesome:'🍀',Strategy:'♟️',Original:'✨'};
+    const icons={Magic:'🔮',Fantasy:'🧙',Adventure:'🗺️',Anime:'⚡',Gaming:'🎮',Study:'📚',Science:'🧪',Comedy:'🤪',Chill:'🌙',Sports:'🏆',Mystery:'🕵️',Technology:'🤖',Knowledge:'🧠',Nature:'🌿',Creative:'🎨',Racing:'🏎️',Wellness:'🧘',Space:'🚀',Coding:'💻',Spooky:'👻',Cozy:'☕',Music:'🎵',Building:'🔨',Holiday:'🎁',Dance:'💃',Art:'🖌️',Heroes:'🛡️',Cute:'🌸',Wholesome:'🍀',Strategy:'♟️',Original:'✨',Flirty:'💋'};
     function decorate(){document.querySelectorAll('.avatar-fallback').forEach(el=>{if(el.dataset.aiIconReady)return;const host=el.closest('.character-card,.chat-character');if(!host)return;const category=host.querySelector('.tag')?.textContent?.trim()||'Original';el.dataset.aiIconReady='1';const p=el.closest('.portrait');el.innerHTML=`<span class="ai-icon-symbol">${icons[category]||icons.Original}</span><span class="ai-icon-sparkle">✦</span>`;if(p){p.dataset.aiCategory=category;p.classList.add('ai-icon-portrait')}})}
     new MutationObserver(decorate).observe(document.documentElement,{childList:true,subtree:true});decorate();
   })();
