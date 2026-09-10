@@ -1,9 +1,22 @@
 const ALLOWED_METHODS = "POST, OPTIONS";
 
+function isAllowedOrigin(origin, allowedOrigin) {
+  if (!origin) return true;
+  if (allowedOrigin === "*") return true;
+  if (origin === allowedOrigin) return true;
+  try {
+    const url = new URL(origin);
+    const allowed = new URL(allowedOrigin);
+    // GitHub Pages can use the same hostname with different paths/environments.
+    if (url.protocol === "https:" && url.hostname === allowed.hostname) return true;
+  } catch {}
+  return false;
+}
+
 function corsHeaders(origin, allowedOrigin) {
-  const allowOrigin = allowedOrigin === "*" || origin === allowedOrigin ? origin : allowedOrigin;
+  const allowOrigin = isAllowedOrigin(origin, allowedOrigin) ? (origin || allowedOrigin) : allowedOrigin;
   return {
-    "Access-Control-Allow-Origin": allowOrigin || "null",
+    "Access-Control-Allow-Origin": allowOrigin || "*",
     "Access-Control-Allow-Methods": ALLOWED_METHODS,
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
@@ -44,10 +57,12 @@ export default {
     const allowedOrigin = env.ALLOWED_ORIGIN || "*";
 
     if (request.method === "OPTIONS") {
+      if (!isAllowedOrigin(origin, allowedOrigin)) {
+        return json({ error: "Origin not allowed", origin }, 403, origin, allowedOrigin);
+      }
       return new Response(null, { status: 204, headers: corsHeaders(origin, allowedOrigin) });
     }
 
-    // Simple browser health check so the Worker can be tested directly.
     if (request.method === "GET") {
       return json({ ok: true, service: "mouth-mover-ai" }, 200, origin, allowedOrigin);
     }
@@ -56,8 +71,8 @@ export default {
       return json({ error: "Method not allowed" }, 405, origin, allowedOrigin);
     }
 
-    if (allowedOrigin !== "*" && origin !== allowedOrigin) {
-      return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
+    if (!isAllowedOrigin(origin, allowedOrigin)) {
+      return json({ error: "Origin not allowed", origin }, 403, origin, allowedOrigin);
     }
 
     if (!env.OPENAI_API_KEY) {
@@ -106,7 +121,7 @@ export default {
     if (!response.ok) {
       const detail = await response.text();
       console.error("OpenAI API error", response.status, detail.slice(0, 1000));
-      return json({ error: "The AI service returned an error." }, 502, origin, allowedOrigin);
+      return json({ error: "The AI service returned an error.", status: response.status }, 502, origin, allowedOrigin);
     }
 
     const data = await response.json();
