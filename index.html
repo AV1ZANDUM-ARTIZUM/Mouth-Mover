@@ -6,6 +6,18 @@
   <meta name="theme-color" content="#111827">
   <title>Mouth Mover — AI Characters</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .ai-icon-portrait .avatar-fallback{position:relative;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.3),transparent 30%),linear-gradient(135deg,#ffffff22,#00000022)}
+    .ai-icon-symbol{font-size:2.1rem;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.28));transition:transform .2s ease}
+    .ai-icon-portrait:hover .ai-icon-symbol{transform:scale(1.12) rotate(3deg)}
+    .ai-icon-sparkle{position:absolute;right:9%;top:7%;font-size:.75rem;color:white;text-shadow:0 1px 4px #0008;animation:ai-twinkle 2.4s ease-in-out infinite}
+    .ai-icon-portrait[data-ai-category="Magic"] .avatar-fallback,.ai-icon-portrait[data-ai-category="Fantasy"] .avatar-fallback{background:linear-gradient(135deg,#8b5cf655,#ec489955 48%,#f59e0b44)}
+    .ai-icon-portrait[data-ai-category="Space"] .avatar-fallback{background:linear-gradient(135deg,#312e8155,#0f172a 70%)}
+    .ai-icon-portrait[data-ai-category="Nature"] .avatar-fallback,.ai-icon-portrait[data-ai-category="Wholesome"] .avatar-fallback{background:linear-gradient(135deg,#22c55e55,#14b8a655 55%,#84cc1644)}
+    .ai-icon-portrait[data-ai-category="Gaming"] .avatar-fallback,.ai-icon-portrait[data-ai-category="Coding"] .avatar-fallback,.ai-icon-portrait[data-ai-category="Technology"] .avatar-fallback{background:linear-gradient(135deg,#06b6d455,#6366f155 55%,#a855f755)}
+    .ai-icon-portrait[data-ai-category="Spooky"] .avatar-fallback,.ai-icon-portrait[data-ai-category="Mystery"] .avatar-fallback{background:linear-gradient(135deg,#111827,#4c1d9555 55%,#334155)}
+    @keyframes ai-twinkle{0%,100%{opacity:.35;transform:scale(.8) rotate(0)}50%{opacity:1;transform:scale(1.15) rotate(20deg)}}
+  </style>
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -17,76 +29,28 @@
       </nav>
       <button class="icon-btn" data-action="settings" aria-label="Settings">⚙</button>
     </header>
-
     <main>
       <section id="discover-view" class="view active">
-        <div class="hero">
-          <div>
-            <p class="eyebrow">AI CHARACTER CHAT</p>
-            <h1>Meet characters that <span>talk back.</span></h1>
-            <p class="hero-copy">Create personalities with a real backstory, memory, voice, and a face that moves while they speak.</p>
-          </div>
-          <button class="primary" data-view="create">＋ Create character</button>
-        </div>
-        <div class="search-row">
-          <input id="character-search" type="search" placeholder="Search characters..." autocomplete="off">
-          <div id="category-chips" class="chips"></div>
-        </div>
+        <div class="hero"><div><p class="eyebrow">AI CHARACTER CHAT</p><h1>Meet characters that <span>talk back.</span></h1><p class="hero-copy">Create personalities with a real backstory, memory, voice, and a face that moves while they speak.</p></div><button class="primary" data-view="create">＋ Create character</button></div>
+        <div class="search-row"><input id="character-search" type="search" placeholder="Search characters..." autocomplete="off"><div id="category-chips" class="chips"></div></div>
         <div id="character-grid" class="character-grid"></div>
       </section>
-
       <section id="create-view" class="view">
         <div class="page-heading"><button class="back-btn" data-view="discover">←</button><div><p class="eyebrow">CHARACTER CREATOR</p><h2>Make someone to talk to</h2></div></div>
-        <form id="character-form" class="creator-card">
-          <div class="avatar-preview" id="avatar-preview"><span>?</span></div>
-          <div class="form-grid">
-            <label>Name<input name="name" required maxlength="40" placeholder="e.g. Nova"></label>
-            <label>Avatar URL<input name="avatar" type="url" placeholder="https://..."></label>
-            <label>Tagline<input name="tagline" maxlength="100" placeholder="A chaotic space explorer"></label>
-            <label>Category<select name="category"><option>Original</option><option>Anime</option><option>Fantasy</option><option>Magic</option><option>Gaming</option><option>Study</option><option>Adventure</option></select></label>
-            <label class="wide">Personality<textarea name="personality" required rows="3" placeholder="Cheerful, curious, brave, sarcastic..."></textarea></label>
-            <label class="wide">Backstory<textarea name="backstory" required rows="4" placeholder="Who are they? What happened to them? What do they want?"></textarea></label>
-            <label class="wide">Speaking style<textarea name="style" rows="2" placeholder="Short energetic messages, playful jokes, occasional emojis..."></textarea></label>
-            <label>Voice<select name="voice"><option value="default">Browser default</option><option value="female">Warm voice</option><option value="male">Deep voice</option></select></label>
-            <label>Greeting<textarea name="greeting" rows="2" placeholder="Hey! I'm glad you're here."></textarea></label>
-          </div>
-          <div class="creator-actions"><button type="button" class="secondary" data-view="discover">Cancel</button><button class="primary" type="submit">Create & chat</button></div>
-        </form>
+        <form id="character-form" class="creator-card"><div class="avatar-preview" id="avatar-preview"><span>?</span></div><div class="form-grid"><label>Name<input name="name" required maxlength="40" placeholder="e.g. Nova"></label><label>Avatar URL<input name="avatar" type="url" placeholder="https://..."></label><label>Tagline<input name="tagline" maxlength="100" placeholder="A chaotic space explorer"></label><label>Category<select name="category"><option>Original</option><option>Anime</option><option>Fantasy</option><option>Magic</option><option>Gaming</option><option>Study</option><option>Adventure</option></select></label><label class="wide">Personality<textarea name="personality" required rows="3" placeholder="Cheerful, curious, brave, sarcastic..."></textarea></label><label class="wide">Backstory<textarea name="backstory" required rows="4" placeholder="Who are they? What happened to them? What do they want?"></textarea></label><label class="wide">Speaking style<textarea name="style" rows="2" placeholder="Short energetic messages, playful jokes, occasional emojis..."></textarea></label><label>Voice<select name="voice"><option value="default">Browser default</option><option value="female">Warm voice</option><option value="male">Deep voice</option></select></label><label>Greeting<textarea name="greeting" rows="2" placeholder="Hey! I'm glad you're here."></textarea></label></div><div class="creator-actions"><button type="button" class="secondary" data-view="discover">Cancel</button><button class="primary" type="submit">Create & chat</button></div></form>
       </section>
-
-      <section id="chat-view" class="view">
-        <div class="chat-layout">
-          <aside class="chat-sidebar">
-            <button class="back-btn" data-view="discover">← Characters</button>
-            <div id="chat-character-card"></div>
-            <div class="side-actions"><button class="secondary full" data-action="clear-chat">Clear memory</button><button class="secondary full" data-action="delete-character">Delete character</button></div>
-          </aside>
-          <div class="chat-panel">
-            <div class="chat-header" id="chat-header"></div>
-            <div id="messages" class="messages"></div>
-            <div id="typing" class="typing hidden"><span></span><span></span><span></span> thinking...</div>
-            <form id="chat-form" class="composer">
-              <textarea id="message-input" rows="1" placeholder="Message your character..." autocomplete="off"></textarea>
-              <button class="send-btn" type="submit" aria-label="Send">➤</button>
-            </form>
-            <div class="composer-tools"><button type="button" data-action="stop-speaking">Stop voice</button><span>Enter to send · Shift+Enter for a new line</span></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="settings-view" class="view">
-        <div class="page-heading"><button class="back-btn" data-view="discover">←</button><div><p class="eyebrow">SETTINGS</p><h2>AI connection</h2></div></div>
-        <div class="settings-card">
-          <label>Backend URL<input id="api-url" type="url" placeholder="https://your-backend.example.com/api/chat"></label>
-          <p class="hint">For real AI replies, point this at your own secure backend. Never put a private API key in this GitHub Pages site.</p>
-          <label class="toggle"><input id="demo-mode" type="checkbox"><span>Use demo AI when the backend is unavailable</span></label>
-          <button class="primary" data-action="save-settings">Save settings</button>
-          <div class="api-info"><strong>Expected request</strong><code>POST /api/chat → { character, messages }</code><strong>Expected response</strong><code>{ "reply": "..." }</code></div>
-        </div>
-      </section>
+      <section id="chat-view" class="view"><div class="chat-layout"><aside class="chat-sidebar"><button class="back-btn" data-view="discover">← Characters</button><div id="chat-character-card"></div><div class="side-actions"><button class="secondary full" data-action="clear-chat">Clear memory</button><button class="secondary full" data-action="delete-character">Delete character</button></div></aside><div class="chat-panel"><div class="chat-header" id="chat-header"></div><div id="messages" class="messages"></div><div id="typing" class="typing hidden"><span></span><span></span><span></span> thinking...</div><form id="chat-form" class="composer"><textarea id="message-input" rows="1" placeholder="Message your character..." autocomplete="off"></textarea><button class="send-btn" type="submit" aria-label="Send">➤</button></form><div class="composer-tools"><button type="button" data-action="stop-speaking">Stop voice</button><span>Enter to send · Shift+Enter for a new line</span></div></div></div></section>
+      <section id="settings-view" class="view"><div class="page-heading"><button class="back-btn" data-view="discover">←</button><div><p class="eyebrow">SETTINGS</p><h2>AI connection</h2></div></div><div class="settings-card"><label>Backend URL<input id="api-url" type="url" placeholder="https://your-backend.example.com/api/chat"></label><p class="hint">For real AI replies, point this at your own secure backend. Never put a private API key in this GitHub Pages site.</p><label class="toggle"><input id="demo-mode" type="checkbox"><span>Use demo AI when the backend is unavailable</span></label><button class="primary" data-action="save-settings">Save settings</button><div class="api-info"><strong>Expected request</strong><code>POST /api/chat → { character, messages }</code><strong>Expected response</strong><code>{ "reply": "..." }</code></div></div></section>
     </main>
   </div>
   <script src="app.js"></script>
   <script src="magic-characters.js"></script>
+  <script>
+  (()=>{
+    const icons={Magic:'🔮',Fantasy:'🧙',Adventure:'🗺️',Anime:'⚡',Gaming:'🎮',Study:'📚',Science:'🧪',Comedy:'🤪',Chill:'🌙',Sports:'🏆',Mystery:'🕵️',Technology:'🤖',Knowledge:'🧠',Nature:'🌿',Creative:'🎨',Racing:'🏎️',Wellness:'🧘',Space:'🚀',Coding:'💻',Spooky:'👻',Cozy:'☕',Music:'🎵',Building:'🔨',Holiday:'🎁',Dance:'💃',Art:'🖌️',Heroes:'🛡️',Cute:'🌸',Wholesome:'🍀',Strategy:'♟️',Original:'✨'};
+    function decorate(){document.querySelectorAll('.avatar-fallback').forEach(el=>{if(el.dataset.aiIconReady)return;const host=el.closest('.character-card,.chat-character');if(!host)return;const category=host.querySelector('.tag')?.textContent?.trim()||'Original';el.dataset.aiIconReady='1';const p=el.closest('.portrait');el.innerHTML=`<span class="ai-icon-symbol">${icons[category]||icons.Original}</span><span class="ai-icon-sparkle">✦</span>`;if(p){p.dataset.aiCategory=category;p.classList.add('ai-icon-portrait')}})}
+    new MutationObserver(decorate).observe(document.documentElement,{childList:true,subtree:true});decorate();
+  })();
+  </script>
 </body>
 </html>
