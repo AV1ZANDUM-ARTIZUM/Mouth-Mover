@@ -1,6 +1,5 @@
 // Mouth Mover network fix.
-// Prefer the normal POST request. If it is blocked OR returns an HTTP error,
-// retry through the Worker's CORS-simple GET chat endpoint.
+// Try normal POST, then CORS GET, then a JSONP script request that does not depend on CORS.
 (() => {
   const BACKEND = 'https://mouth-mover-ai.stedford30.workers.dev';
   const BACKEND_URL = new URL(BACKEND);
@@ -46,6 +45,44 @@
     });
   }
 
+  function jsonpFallback(rawBody) {
+    return new Promise((resolve, reject) => {
+      const compact = compactPayload(rawBody);
+      const payload = encodeBase64Url(compact);
+      const callbackName = `__mouthMover_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const script = document.createElement('script');
+      let settled = false;
+      const cleanup = () => {
+        delete window[callbackName];
+        script.remove();
+      };
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn(value);
+      };
+      window[callbackName] = data => {
+        if (data?.reply) {
+          finish(resolve, new Response(JSON.stringify({ reply: data.reply }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }));
+        } else {
+          finish(resolve, new Response(JSON.stringify({ error: data?.error || 'AI request failed.' }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' }
+          }));
+        }
+      };
+      script.onerror = () => finish(reject, new Error('JSONP request failed.'));
+      script.src = `${BACKEND}?payload=${encodeURIComponent(payload)}&callback=${encodeURIComponent(callbackName)}`;
+      script.async = true;
+      document.head.appendChild(script);
+      setTimeout(() => finish(reject, new Error('JSONP request timed out.')), 30000);
+    });
+  }
+
   window.fetch = async (input, init = {}) => {
     let requestUrl = '';
     try {
@@ -80,10 +117,15 @@
       try {
         const fallback = await getFallback(body);
         if (fallback.ok) return fallback;
-        console.warn(`Mouth Mover GET fallback returned HTTP ${fallback.status}.`);
-        return fallback;
+        console.warn(`Mouth Mover GET fallback returned HTTP ${fallback.status}; trying JSONP.`);
       } catch (fallbackError) {
-        console.warn('Mouth Mover GET fallback failed.', fallbackError);
+        console.warn('Mouth Mover GET fallback failed; trying JSONP.', fallbackError);
+      }
+
+      try {
+        return await jsonpFallback(body);
+      } catch (jsonpError) {
+        console.error('Mouth Mover JSONP fallback failed.', jsonpError);
         throw new Error('Mouth Mover could not reach the AI Worker.');
       }
     }
