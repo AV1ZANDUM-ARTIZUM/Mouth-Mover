@@ -1,4 +1,4 @@
-const VERSION = "2026-09-10-jsonp-fallback";
+const VERSION = "2026-09-11-ai-diagnostic";
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Accept";
 
@@ -142,6 +142,19 @@ export default {
       const url = new URL(request.url);
       const payload = url.searchParams.get("payload");
       const callback = url.searchParams.get("callback");
+      const aiTest = url.searchParams.get("test") === "ai";
+
+      if (!payload && aiTest) {
+        const result = await makeReply({
+          character: { name: "Mouth Mover diagnostic", personality: "brief and technical", style: "reply with exactly one short sentence" },
+          messages: [{ role: "user", content: "Reply exactly: AI connection works." }],
+        }, env);
+        const data = result.reply
+          ? { ok: true, ai: true, reply: result.reply, model: env.OPENAI_MODEL || "gpt-5.6-luna", version: VERSION }
+          : { ok: false, ai: false, error: result.error, model: env.OPENAI_MODEL || "gpt-5.6-luna", version: VERSION };
+        return callback ? jsonp(data, result.status, callback) : json(data, result.status, origin, allowedOrigin);
+      }
+
       if (!payload) {
         const data = {
           ok: true,
