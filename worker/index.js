@@ -1,4 +1,4 @@
-const VERSION = "2026-09-11-ai-diagnostic";
+const VERSION = "2026-09-11-free-worker";
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Accept";
 
@@ -38,12 +38,9 @@ function json(data, status, origin, allowedOrigin) {
 }
 
 function jsonp(data, status, callback) {
-  const safeCallback = /^[A-Za-z_$][0-9A-Za-z_$]*(?:\.[A-Za-z_$][0-9A-Za-z_$]*){0,4}$/.test(callback || "")
-    ? callback
-    : null;
+  const safeCallback = /^[A-Za-z_$][0-9A-Za-z_$]*(?:\.[A-Za-z_$][0-9A-Za-z_$]*){0,4}$/.test(callback || "") ? callback : null;
   if (!safeCallback) return json({ error: "Invalid callback." }, 400, "", "*");
-  const body = `${safeCallback}(${JSON.stringify(data)});`;
-  return new Response(body, {
+  return new Response(`${safeCallback}(${JSON.stringify(data)});`, {
     status,
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
@@ -54,76 +51,43 @@ function jsonp(data, status, callback) {
   });
 }
 
-function characterInstructions(character) {
-  const name = String(character?.name || "AI character").slice(0, 80);
-  const personality = String(character?.personality || "friendly and conversational").slice(0, 1500);
-  const backstory = String(character?.backstory || "").slice(0, 2500);
-  const style = String(character?.style || "natural and conversational").slice(0, 800);
-  return [
-    `You are ${name}, an AI character in Mouth Mover.`,
-    `Personality: ${personality}`,
-    `Backstory: ${backstory}`,
-    `Speaking style: ${style}`,
-    "Stay in character while remaining helpful and safe.",
-    "Do not claim to be a real person or to have real-world experiences.",
-    "Keep replies reasonably concise for a chat interface unless the user asks for detail.",
-  ].join("\n");
-}
-
 function decodePayload(value) {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
   const binary = atob(padded);
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-async function makeReply(body, env) {
+function freeReply(body) {
   const character = body?.character || {};
   const messages = Array.isArray(body?.messages) ? body.messages : [];
-  const safeMessages = messages
-    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-18)
-    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+  const last = [...messages].reverse().find(m => m?.role === "user" && typeof m.content === "string");
+  const text = String(last?.content || "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const name = String(character.name || "AI character").slice(0, 80);
+  const personality = String(character.personality || "friendly, curious and helpful").slice(0, 180);
 
-  if (!safeMessages.length) return { error: "At least one message is required.", status: 400 };
-  if (!env.OPENAI_API_KEY) return { error: "OPENAI_API_KEY is not configured on the server.", status: 500 };
+  if (!text) return { reply: `Hey! I'm ${name}. What should we talk about?` };
+  const lower = text.toLowerCase();
+  if (/^(hi|hello|hey|yo|sup|hiya)\b/.test(lower)) return { reply: `Hey! It's ${name}! 😄 What's going on?` };
+  if (/what(?:'s| is) my name|do you remember my name/.test(lower)) return { reply: "I can remember details during this conversation, but I don't know your name yet unless you told me here." };
+  if (/who are you|what are you/.test(lower)) return { reply: `I'm ${name}. ${personality}` };
+  if (/\b(joke|funny)\b/.test(lower)) return { reply: "Why did the computer go to the doctor? It had a virus. 😄" };
+  if (/\b(thank|thanks)\b/.test(lower)) return { reply: "Anytime! 😄" };
+  if (/\b(bye|goodbye|see ya)\b/.test(lower)) return { reply: "See you later! 👋" };
+  if (/\b(nxe4)\b/i.test(text)) return { reply: "Nxe4! Knight takes e4. 😏 Your move. ♟️" };
+  if (/\?$/.test(text)) return { reply: `Good question, ${name} would say. About “${text.replace(/\?+$/, "")}": let's work through it together. What part should we tackle first?` };
+  return { reply: `I caught what you said: “${text}.” ${personality} What happens next?` };
+}
 
-  const model = env.OPENAI_MODEL || "gpt-5.6-luna";
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        instructions: characterInstructions(character),
-        input: safeMessages,
-        store: false,
-      }),
-    });
+function chatResponse(body) {
+  const result = freeReply(body);
+  return { ...result, offline: true, provider: "Mouth Mover Free Worker AI" };
+}
 
-    if (!response.ok) {
-      const detail = await response.text();
-      let message = `OpenAI returned HTTP ${response.status}.`;
-      try {
-        const parsed = JSON.parse(detail);
-        message = parsed?.error?.message || message;
-      } catch {}
-      console.error("OpenAI API error", response.status, detail.slice(0, 2000));
-      return { error: message, status: 502 };
-    }
-
-    const data = await response.json();
-    const reply = typeof data.output_text === "string" ? data.output_text.trim() : "";
-    if (!reply) return { error: "The AI service returned no text.", status: 502 };
-    return { reply, status: 200 };
-  } catch (error) {
-    console.error("OpenAI request error", error);
-    return { error: "The AI service could not be reached.", status: 502 };
-  }
+async function handleChat(request, body, env) {
+  const result = chatResponse(body);
+  return result;
 }
 
 export default {
@@ -135,7 +99,6 @@ export default {
       if (!isAllowedOrigin(origin, allowedOrigin)) return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
       return new Response(null, { status: 204, headers: corsHeaders(origin, allowedOrigin) });
     }
-
     if (!isAllowedOrigin(origin, allowedOrigin)) return json({ error: "Origin not allowed" }, 403, origin, allowedOrigin);
 
     if (request.method === "GET") {
@@ -145,14 +108,15 @@ export default {
       const aiTest = url.searchParams.get("test") === "ai";
 
       if (!payload && aiTest) {
-        const result = await makeReply({
-          character: { name: "Mouth Mover diagnostic", personality: "brief and technical", style: "reply with exactly one short sentence" },
-          messages: [{ role: "user", content: "Reply exactly: AI connection works." }],
-        }, env);
-        const data = result.reply
-          ? { ok: true, ai: true, reply: result.reply, model: env.OPENAI_MODEL || "gpt-5.6-luna", version: VERSION }
-          : { ok: false, ai: false, error: result.error, model: env.OPENAI_MODEL || "gpt-5.6-luna", version: VERSION };
-        return callback ? jsonp(data, result.status, callback) : json(data, result.status, origin, allowedOrigin);
+        const data = {
+          ok: true,
+          ai: false,
+          free: true,
+          provider: "Mouth Mover Free Worker AI",
+          model: "browser-free",
+          version: VERSION,
+        };
+        return callback ? jsonp(data, 200, callback) : json(data, 200, origin, allowedOrigin);
       }
 
       if (!payload) {
@@ -160,16 +124,17 @@ export default {
           ok: true,
           service: "mouth-mover-ai",
           version: VERSION,
-          openaiConfigured: Boolean(env.OPENAI_API_KEY),
-          model: env.OPENAI_MODEL || "gpt-5.6-luna",
+          free: true,
+          openaiConfigured: false,
+          model: "browser-free",
         };
         return callback ? jsonp(data, 200, callback) : json(data, 200, origin, allowedOrigin);
       }
+
       try {
         const body = decodePayload(payload);
-        const result = await makeReply(body, env);
-        const data = result.reply ? { reply: result.reply } : { error: result.error };
-        return callback ? jsonp(data, result.status, callback) : json(data, result.status, origin, allowedOrigin);
+        const data = chatResponse(body);
+        return callback ? jsonp(data, 200, callback) : json(data, 200, origin, allowedOrigin);
       } catch (error) {
         console.error("GET chat payload error", error);
         const data = { error: "Invalid chat payload." };
@@ -186,7 +151,6 @@ export default {
       return json({ error: "Invalid JSON body" }, 400, origin, allowedOrigin);
     }
 
-    const result = await makeReply(body, env);
-    return json(result.reply ? { reply: result.reply } : { error: result.error }, result.status, origin, allowedOrigin);
+    return json(chatResponse(body), 200, origin, allowedOrigin);
   },
 };
